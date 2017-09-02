@@ -5,7 +5,9 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
+	"time"
 )
 
 const baseURL = "https://api.chatwork.com/v2/"
@@ -66,4 +68,42 @@ func (c *Chatwork) CreateMessage(message *Message) {
 	vs := url.Values{}
 	vs.Add("body", string(message.body))
 	c.post(endpoint, vs)
+}
+
+type UserId int64
+type UserIds []UserId
+
+type Task struct {
+	roomId    RoomId
+	body      Text
+	assignees UserIds
+	due       time.Time
+}
+
+func NewTask(roomId int64, body string, assignees []int64, due time.Time) *Task {
+	t := new(Task)
+	t.roomId = RoomId(roomId)
+	t.body = Text(body)
+	t.assignees = make([]UserId, 0)
+	for _, a := range assignees {
+		t.assignees = append(t.assignees, UserId(a))
+	}
+	t.due = due
+	return t
+}
+
+func (c *Chatwork) CreateTask(task *Task) {
+	endpoint := endpoint(baseURL + fmt.Sprintf("rooms/%d/tasks", task.roomId))
+	vs := url.Values{}
+	vs.Add("body", string(task.body))
+	vs.Add("to_ids", task.assignees.toString(","))
+	c.post(endpoint, vs)
+}
+
+func (ids UserIds) toString(sep string) string {
+	buf := make([]string, len(ids))
+	for i, id := range ids {
+		buf[i] = strconv.FormatInt(int64(id), 10)
+	}
+	return strings.Join(buf, sep)
 }
