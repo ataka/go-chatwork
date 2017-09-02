@@ -42,18 +42,18 @@ func (c *Chatwork) post(endpoint endpoint, vs url.Values) {
 	}
 }
 
-type text string
-type roomId int64
+type Text string
+type RoomId int64
 
 type Message struct {
-	roomId roomId
-	body   text
+	roomId RoomId
+	body   Text
 }
 
-func NewMessage(roomId roomId, body text) *Message {
+func NewMessage(roomId int64, body string) *Message {
 	m := new(Message)
-	m.roomId = roomId
-	m.body = body
+	m.roomId = RoomId(roomId)
+	m.body = Text(body)
 	return m
 }
 
