@@ -74,13 +74,13 @@ type UserId int64
 type UserIds []UserId
 
 type Task struct {
-	roomId    RoomId
-	body      Text
-	assignees UserIds
-	due       time.Time
+	roomId     RoomId
+	body       Text
+	assignees  UserIds
+	due       *time.Time
 }
 
-func NewTask(roomId int64, body string, assignees []int64, due time.Time) *Task {
+func NewTask(roomId int64, body string, assignees []int64, due *time.Time) *Task {
 	t := new(Task)
 	t.roomId = RoomId(roomId)
 	t.body = Text(body)
@@ -97,6 +97,9 @@ func (c *Chatwork) CreateTask(task *Task) {
 	vs := url.Values{}
 	vs.Add("body", string(task.body))
 	vs.Add("to_ids", task.assignees.toString(","))
+	if task.due != nil {
+		vs.Add("limit", strconv.FormatInt(task.due.Unix(), 10))
+	}
 	c.post(endpoint, vs)
 }
 
