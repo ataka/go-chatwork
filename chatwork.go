@@ -84,9 +84,9 @@ func NewTask(roomId int64, body string, assignees []int64, due time.Time) *Task 
 	t := new(Task)
 	t.roomId = RoomId(roomId)
 	t.body = Text(body)
-	t.assignees = make([]UserId, 0)
-	for _, a := range assignees {
-		t.assignees = append(t.assignees, UserId(a))
+	t.assignees = make([]UserId, len(assignees))
+	for i, a := range assignees {
+		t.assignees[i] = UserId(a)
 	}
 	t.due = due
 	return t
