@@ -28,13 +28,13 @@ func NewChatwork(apiKey string) *Chatwork {
 type endpoint string
 
 type chatworkRequest interface {
+	endpoint() endpoint
 	values() *url.Values
 }
 
-func (c *Chatwork) post(endpoint endpoint, req chatworkRequest) *http.Response {
-	vs := req.values()
-	reqBody := strings.NewReader(vs.Encode())
-	request, requestError := http.NewRequest("POST", string(endpoint), reqBody)
+func (c *Chatwork) post(req chatworkRequest) *http.Response {
+	reqBody := strings.NewReader(req.values().Encode())
+	request, requestError := http.NewRequest("POST", string(req.endpoint()), reqBody)
 	if requestError != nil {
 		log.Fatal(requestError)
 	}
@@ -71,6 +71,10 @@ func NewCreateMessageRequest(roomId int64, body string) *CreateMessageRequest {
 	return m
 }
 
+func (m *CreateMessageRequest) endpoint() endpoint {
+	return endpoint(baseURL + fmt.Sprintf("rooms/%d/messages", m.roomId))
+}
+
 func (m *CreateMessageRequest) values() *url.Values {
 	vs := url.Values{}
 	vs.Add("body", string(m.body))
@@ -81,13 +85,8 @@ type CreateMessageResponse struct {
 	MessageId string `json:"message_id"`
 }
 
-func endpointFmt(format string, a ...interface{}) string {
-	return fmt.Sprintf(format, a)
-}
-
 func (c *Chatwork) CreateMessage(req *CreateMessageRequest) *CreateMessageResponse {
-	endpoint := endpoint(baseURL + fmt.Sprintf("rooms/%d/messages", req.roomId))
-	httpRes := c.post(endpoint, req)
+	httpRes := c.post(req)
 
 	var res CreateMessageResponse
 	if err := decodeBody(httpRes, &res); err != nil {
@@ -104,6 +103,10 @@ type CreateTaskRequest struct {
 	body      Text
 	assignees UserIds
 	due       *time.Time
+}
+
+func (t *CreateTaskRequest) endpoint() endpoint {
+	return endpoint(baseURL + fmt.Sprintf("rooms/%d/tasks", t.roomId))
 }
 
 func (t *CreateTaskRequest) values() *url.Values {
@@ -133,8 +136,7 @@ func NewCreateTaskRequest(roomId int64, body string, assignees []int64, due *tim
 }
 
 func (c *Chatwork) CreateTask(req *CreateTaskRequest) *CreateTaskResponse {
-	endpoint := endpoint(baseURL + fmt.Sprintf("rooms/%d/tasks", req.roomId))
-	httpRes := c.post(endpoint, req)
+	httpRes := c.post(req)
 
 	var res CreateTaskResponse
 	if err := decodeBody(httpRes, &res); err != nil {
