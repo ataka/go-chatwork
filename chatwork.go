@@ -27,7 +27,12 @@ func NewChatwork(apiKey string) *Chatwork {
 
 type endpoint string
 
-func (c *Chatwork) post(endpoint endpoint, vs *url.Values) *http.Response {
+type chatworkRequest interface {
+	values() *url.Values
+}
+
+func (c *Chatwork) post(endpoint endpoint, req chatworkRequest) *http.Response {
+	vs := req.values()
 	reqBody := strings.NewReader(vs.Encode())
 	request, requestError := http.NewRequest("POST", string(endpoint), reqBody)
 	if requestError != nil {
@@ -82,7 +87,7 @@ func endpointFmt(format string, a ...interface{}) string {
 
 func (c *Chatwork) CreateMessage(req *CreateMessageRequest) *CreateMessageResponse {
 	endpoint := endpoint(baseURL + fmt.Sprintf("rooms/%d/messages", req.roomId))
-	httpRes := c.post(endpoint, req.values())
+	httpRes := c.post(endpoint, req)
 
 	var res CreateMessageResponse
 	if err := decodeBody(httpRes, &res); err != nil {
@@ -129,7 +134,7 @@ func NewCreateTaskRequest(roomId int64, body string, assignees []int64, due *tim
 
 func (c *Chatwork) CreateTask(req *CreateTaskRequest) *CreateTaskResponse {
 	endpoint := endpoint(baseURL + fmt.Sprintf("rooms/%d/tasks", req.roomId))
-	httpRes := c.post(endpoint, req.values())
+	httpRes := c.post(endpoint, req)
 
 	var res CreateTaskResponse
 	if err := decodeBody(httpRes, &res); err != nil {
