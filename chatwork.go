@@ -27,7 +27,7 @@ func NewChatwork(apiKey string) *Chatwork {
 
 type endpoint string
 
-func (c *Chatwork) post(endpoint endpoint, vs url.Values) *http.Response {
+func (c *Chatwork) post(endpoint endpoint, vs *url.Values) *http.Response {
 	reqBody := strings.NewReader(vs.Encode())
 	request, requestError := http.NewRequest("POST", string(endpoint), reqBody)
 	if requestError != nil {
@@ -54,55 +54,69 @@ func decodeBody(res *http.Response, out interface{}) error {
 type Text string
 type RoomId int64
 
-type Message struct {
+type CreateMessageRequest struct {
 	roomId RoomId
 	body   Text
 }
 
-type NewMessageResponse struct {
-	MessageId string `json:"message_id"`
-}
-
-func NewMessage(roomId int64, body string) *Message {
-	m := new(Message)
+func NewCreateMessageRequest(roomId int64, body string) *CreateMessageRequest {
+	m := new(CreateMessageRequest)
 	m.roomId = RoomId(roomId)
 	m.body = Text(body)
 	return m
+}
+
+func (m *CreateMessageRequest) values() *url.Values {
+	vs := url.Values{}
+	vs.Add("body", string(m.body))
+	return &vs
+}
+
+type CreateMessageResponse struct {
+	MessageId string `json:"message_id"`
 }
 
 func endpointFmt(format string, a ...interface{}) string {
 	return fmt.Sprintf(format, a)
 }
 
-func (c *Chatwork) CreateMessage(message *Message) *NewMessageResponse {
-	endpoint := endpoint(baseURL + fmt.Sprintf("rooms/%d/messages", message.roomId))
-	vs := url.Values{}
-	vs.Add("body", string(message.body))
-	res := c.post(endpoint, vs)
+func (c *Chatwork) CreateMessage(req *CreateMessageRequest) *CreateMessageResponse {
+	endpoint := endpoint(baseURL + fmt.Sprintf("rooms/%d/messages", req.roomId))
+	httpRes := c.post(endpoint, req.values())
 
-	var newMessageResponse NewMessageResponse
-	if err := decodeBody(res, &newMessageResponse); err != nil {
+	var res CreateMessageResponse
+	if err := decodeBody(httpRes, &res); err != nil {
 		log.Fatal(err)
 	}
-	return &newMessageResponse
+	return &res
 }
 
 type UserId int64
 type UserIds []UserId
 
-type Task struct {
+type CreateTaskRequest struct {
 	roomId    RoomId
 	body      Text
 	assignees UserIds
 	due       *time.Time
 }
 
-type NewTaskResponse struct {
+func (t *CreateTaskRequest) values() *url.Values {
+	vs := url.Values{}
+	vs.Add("body", string(t.body))
+	vs.Add("to_ids", t.assignees.toString(","))
+	if t.due != nil {
+		vs.Add("limit", strconv.FormatInt(t.due.Unix(), 10))
+	}
+	return &vs
+}
+
+type CreateTaskResponse struct {
 	TaskIds []int64 `json:"task_ids"`
 }
 
-func NewTask(roomId int64, body string, assignees []int64, due *time.Time) *Task {
-	t := new(Task)
+func NewCreateTaskRequest(roomId int64, body string, assignees []int64, due *time.Time) *CreateTaskRequest {
+	t := new(CreateTaskRequest)
 	t.roomId = RoomId(roomId)
 	t.body = Text(body)
 	t.assignees = make([]UserId, len(assignees))
@@ -113,21 +127,15 @@ func NewTask(roomId int64, body string, assignees []int64, due *time.Time) *Task
 	return t
 }
 
-func (c *Chatwork) CreateTask(task *Task) *NewTaskResponse {
-	endpoint := endpoint(baseURL + fmt.Sprintf("rooms/%d/tasks", task.roomId))
-	vs := url.Values{}
-	vs.Add("body", string(task.body))
-	vs.Add("to_ids", task.assignees.toString(","))
-	if task.due != nil {
-		vs.Add("limit", strconv.FormatInt(task.due.Unix(), 10))
-	}
-	res := c.post(endpoint, vs)
+func (c *Chatwork) CreateTask(req *CreateTaskRequest) *CreateTaskResponse {
+	endpoint := endpoint(baseURL + fmt.Sprintf("rooms/%d/tasks", req.roomId))
+	httpRes := c.post(endpoint, req.values())
 
-	var newTaskResponse NewTaskResponse
-	if err := decodeBody(res, &newTaskResponse); err != nil {
+	var res CreateTaskResponse
+	if err := decodeBody(httpRes, &res); err != nil {
 		log.Fatal(err)
 	}
-	return &newTaskResponse
+	return &res
 }
 
 func (ids UserIds) toString(sep string) string {
