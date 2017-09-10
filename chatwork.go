@@ -33,10 +33,19 @@ func newEndpoint(format string, a ...interface{}) endpoint {
 
 type chatworkRequest interface {
 	endpoint() endpoint
+}
+
+type chatworkPostRequest interface {
+	chatworkRequest
 	values() *url.Values
 }
 
-func (c *Chatwork) post(req chatworkRequest) *http.Response {
+type chatworkGetRequest interface {
+	chatworkRequest
+	params() string
+}
+
+func (c *Chatwork) post(req chatworkPostRequest) *http.Response {
 	reqBody := strings.NewReader(req.values().Encode())
 	request, requestError := http.NewRequest("POST", string(req.endpoint()), reqBody)
 	if requestError != nil {
@@ -44,6 +53,26 @@ func (c *Chatwork) post(req chatworkRequest) *http.Response {
 	}
 
 	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Add("X-ChatWorkToken", string(c.apiKey))
+
+	httpClient := new(http.Client)
+	res, error := httpClient.Do(request)
+	if error != nil {
+		log.Fatal(error)
+	}
+	return res
+}
+
+func (c *Chatwork) get(req chatworkGetRequest) *http.Response {
+	url, params := string(req.endpoint()), req.params()
+	if len(params) > 0 {
+		url = url + "?" + params
+	}
+	request, requestError := http.NewRequest("", url, nil)
+	if requestError != nil {
+		log.Fatal(requestError)
+	}
+
 	request.Header.Add("X-ChatWorkToken", string(c.apiKey))
 
 	httpClient := new(http.Client)
