@@ -27,6 +27,10 @@ func NewChatwork(apiKey string) *Chatwork {
 
 type endpoint string
 
+func newEndpoint(format string, a ...interface{}) endpoint {
+	return endpoint(baseURL + fmt.Sprintf(format, a...))
+}
+
 type chatworkRequest interface {
 	endpoint() endpoint
 	values() *url.Values
@@ -72,7 +76,7 @@ func NewCreateMessageRequest(roomId int64, body string) *CreateMessageRequest {
 }
 
 func (m *CreateMessageRequest) endpoint() endpoint {
-	return endpoint(baseURL + fmt.Sprintf("rooms/%d/messages", m.roomId))
+	return newEndpoint("rooms/%d/messages", m.roomId)
 }
 
 func (m *CreateMessageRequest) values() *url.Values {
@@ -106,7 +110,7 @@ type CreateTaskRequest struct {
 }
 
 func (t *CreateTaskRequest) endpoint() endpoint {
-	return endpoint(baseURL + fmt.Sprintf("rooms/%d/tasks", t.roomId))
+	return newEndpoint("rooms/%d/tasks", t.roomId)
 }
 
 func (t *CreateTaskRequest) values() *url.Values {
