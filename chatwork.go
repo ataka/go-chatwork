@@ -91,6 +91,7 @@ func decodeBody(res *http.Response, out interface{}) error {
 
 type Text string
 type RoomId int64
+type MessageId string
 
 type CreateMessageRequest struct {
 	roomId RoomId
@@ -122,6 +123,48 @@ func (c *Chatwork) CreateMessage(req *CreateMessageRequest) *CreateMessageRespon
 	httpRes := c.post(req)
 
 	var res CreateMessageResponse
+	if err := decodeBody(httpRes, &res); err != nil {
+		log.Fatal(err)
+	}
+	return &res
+}
+
+type GetMessageRequest struct {
+	roomId    RoomId
+	messageId MessageId
+}
+
+func NewGetMessageRequest(roomId int64, messageId string) *GetMessageRequest {
+	m := new(GetMessageRequest)
+	m.roomId = RoomId(roomId)
+	m.messageId = MessageId(messageId)
+	return m
+}
+
+func (m *GetMessageRequest) endpoint() endpoint {
+	return newEndpoint("rooms/%d/messages/%s", m.roomId, m.messageId)
+}
+
+func (m *GetMessageRequest) params() string {
+	return ""
+}
+
+type GetMessageResponse struct {
+	MessageId string `json:"message_id"`
+	User      struct {
+		UserId    int64  `json:"account_id"`
+		Name      string `json:"name"`
+		AvatarUrl string `json:"avatar_image_url"`
+	} `json:"account"`
+	Body     string `json:"body"`
+	sendAt   int64  `json:"send_time"`
+	updateAt int64  `json:"update_time"`
+}
+
+func (c *Chatwork) GetMessage(req *GetMessageRequest) *GetMessageResponse {
+	httpRes := c.get(req)
+
+	var res GetMessageResponse
 	if err := decodeBody(httpRes, &res); err != nil {
 		log.Fatal(err)
 	}
